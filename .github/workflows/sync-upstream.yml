@@ -113,14 +113,13 @@ jobs:
             git merge "$TARGET_SHA" --no-edit
           fi
 
-      - name: Restore workflow file
+      - name: Restore workflow files
         if: steps.check.outputs.needs_update == 'true'
         run: |
-          # Always keep our own workflow file, never let upstream overwrite it
-          git checkout HEAD@{1} -- .github/workflows/sync-upstream.yml 2>/dev/null || true
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: restore sync-upstream workflow after sync"
-          fi
+          # Never let upstream create or overwrite GitHub Actions workflow files
+          git restore --staged .github/workflows 2>/dev/null || true
+          git restore .github/workflows 2>/dev/null || true
+          git clean -fd .github/workflows 2>/dev/null || true
 
       - name: Push
         if: steps.check.outputs.needs_update == 'true'
