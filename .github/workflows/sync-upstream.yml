@@ -1,0 +1,56 @@
+name: Sync NodeWarden Upstream
+
+on:
+  schedule:
+    - cron: "20 19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-nodewarden-upstream
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync upstream and restore deployment settings
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git remote add upstream https://github.com/shuaiplus/NodeWarden.git
+          git fetch upstream main
+
+          cp .github/workflows/sync-upstream.yml /tmp/sync-upstream.yml
+          git reset --hard upstream/main
+
+          mkdir -p .github/workflows
+          cp /tmp/sync-upstream.yml .github/workflows/sync-upstream.yml
+
+          sed -i 's/^name = "nodewarden"$/name = "nodewarden-v173"/' wrangler.toml
+          sed -i 's/^database_name = "nodewarden-db"$/database_name = "nodewarden-v173-db"/' wrangler.toml
+          sed -i 's/^bucket_name = "nodewarden-attachments"$/bucket_name = "nodewarden-v173-attachments"/' wrangler.toml
+
+          grep -q '^name = "nodewarden-v173"$' wrangler.toml
+          grep -q '^database_name = "nodewarden-v173-db"$' wrangler.toml
+          grep -q '^bucket_name = "nodewarden-v173-attachments"$' wrangler.toml
+
+          git add wrangler.toml .github/workflows/sync-upstream.yml
+
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: sync upstream and restore v173 deployment settings"
+          fi
+
+          git push origin main --force-with-lease
