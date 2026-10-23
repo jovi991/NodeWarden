@@ -30,11 +30,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git remote add upstream https://github.com/shuaiplus/NodeWarden.git
+          git remote add upstream https://github.com/shuaiplus/NodeWarden.git || true
           git fetch upstream main
 
           cp .github/workflows/sync-upstream.yml /tmp/sync-upstream.yml
+
           git reset --hard upstream/main
+
+          # 避免 GitHub Actions 權限不足導致 push 失敗
+          rm -f .github/workflows/security-extra.yml
 
           mkdir -p .github/workflows
           cp /tmp/sync-upstream.yml .github/workflows/sync-upstream.yml
@@ -47,7 +51,7 @@ jobs:
           grep -q '^database_name = "nodewarden-v173-db"$' wrangler.toml
           grep -q '^bucket_name = "nodewarden-v173-attachments"$' wrangler.toml
 
-          git add wrangler.toml .github/workflows/sync-upstream.yml
+          git add .
 
           if ! git diff --cached --quiet; then
             git commit -m "chore: sync upstream and restore v173 deployment settings"
